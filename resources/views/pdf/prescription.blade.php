@@ -101,7 +101,8 @@
         <table>
             <tr>
                 <td><strong>Paciente:</strong> {{ $medicalRecord->patient->first_name }}
-                    {{ $medicalRecord->patient->last_name }}</td>
+                    {{ $medicalRecord->patient->last_name }}
+                </td>
                 <td><strong>Fecha:</strong> {{ $medicalRecord->created_at->format('d/m/Y H:i') }}</td>
             </tr>
             <tr>
@@ -120,7 +121,7 @@
     <!-- Receta / Tratamiento -->
     <div class="section-title">Receta / Indicaciones Médicas</div>
     <div class="content-text" style="border-left-color: #059669;">
-        {{ $medicalRecord->prescription ?? 'No se registraron medicamentos en esta sesión.' }}
+        {!! nl2br(e($medicalRecord->prescription ?? 'No se registraron medicamentos en esta sesión.')) !!}
     </div>
 
     <!-- Firma del Odontólogo -->

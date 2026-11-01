@@ -2,11 +2,11 @@
 
 use App\Http\Controllers\AppointmentController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PatientController;
 
-
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/login', function () {
+    return view('auth.login');
+})->name('login');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/appointments/check-availability', [AppointmentController::class, 'checkAvailability'])->name('appointments.check-availability');
@@ -25,3 +25,5 @@ Route::get('/dashboard/cash', function () {
 Route::get('/dashboard/medical-records', function () {
     return view('medical-records.index');
 });
+
+Route::get('/dashboard/patients', [PatientController::class, 'indexView']);
