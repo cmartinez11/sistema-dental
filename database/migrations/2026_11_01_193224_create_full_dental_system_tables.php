@@ -53,6 +53,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('patient_id');
             $table->unsignedBigInteger('dentist_id');
             $table->unsignedBigInteger('treatment_id')->nullable();
+            $table->unsignedTinyInteger('dental_chair')->default(1); // Número de sillón clínico (1, 2, 3...)
             $table->dateTime('start_time');
             $table->dateTime('end_time');
             $table->enum('status', ['scheduled', 'confirmed', 'completed', 'cancelled'])->default('scheduled');
@@ -62,6 +63,10 @@ return new class extends Migration {
             $table->foreign('patient_id')->references('id')->on('patients')->onDelete('cascade');
             $table->foreign('dentist_id')->references('id')->on('dentists')->onDelete('cascade');
             $table->foreign('treatment_id')->references('id')->on('treatments')->onDelete('set null');
+
+            // Índices compuestos para optimizar búsquedas de solapamiento de horarios en InnoDB
+            $table->index(['dentist_id', 'start_time', 'end_time'], 'idx_dentist_schedule');
+            $table->index(['dental_chair', 'start_time', 'end_time'], 'idx_chair_schedule');
         });
 
         // 5. Historias Clínicas y Notas de Evolución por Sesión
