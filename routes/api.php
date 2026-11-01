@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\MedicalRecordController;
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -14,3 +16,8 @@ Route::middleware('auth:sanctum')->post('/appointments', [AppointmentController:
 
 // Ruta protegida para registrar pagos y transacciones en caja
 Route::middleware('auth:sanctum')->post('/transactions', [TransactionController::class, 'store']);
+
+Route::middleware('auth:sanctum')->post('/medical-records', [MedicalRecordController::class, 'store']);
+
+
+Route::get('/medical-records/{id}/pdf', [MedicalRecordController::class, 'downloadPdf']);
