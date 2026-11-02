@@ -11,7 +11,7 @@ class StoreMedicalRecordRequest extends FormRequest
     public function authorize(): bool
     {
         // Validar mediante la Policy que el usuario autenticado puede crear historias clínicas (solo dentistas/admin)
-        return $this->user()->can('create', MedicalRecord::class);
+        return (bool) $this->user()?->can('create', MedicalRecord::class);
     }
 
     public function rules(): array
