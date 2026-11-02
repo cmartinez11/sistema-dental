@@ -17,47 +17,58 @@ class DashboardViewTest extends TestCase
         $response->assertRedirect('/login');
     }
 
-    public function test_user_can_login_via_web_and_access_dashboard_without_redirection(): void
+    public function test_admin_can_login_via_web_and_access_dashboard(): void
     {
-        $user = User::create([
+        $admin = User::create([
+            'name' => 'Dr. Cristhian Admin',
+            'email' => 'admin@dental.test',
+            'password' => bcrypt('password123'),
+            'role' => UserRole::Admin,
+        ]);
+
+        $loginResponse = $this->post('/login', [
+            'email' => 'admin@dental.test',
+            'password' => 'password123',
+        ]);
+        $loginResponse->assertRedirect('/dashboard');
+
+        $dashboardResponse = $this->get('/dashboard');
+        $dashboardResponse->assertStatus(200);
+        $dashboardResponse->assertSee('¡Bienvenido(a), Dr. Cristhian Admin!');
+        $dashboardResponse->assertSee('Total Pacientes');
+        $dashboardResponse->assertSee('Citas para Hoy');
+        $dashboardResponse->assertSee('Dentistas Activos');
+        $dashboardResponse->assertSee('Ingresos del Día');
+        $dashboardResponse->assertSee('/dashboard/patients');
+        $dashboardResponse->assertSee('/dashboard/appointments');
+        $dashboardResponse->assertSee('/dashboard/cash');
+    }
+
+    public function test_receptionist_accessing_dashboard_is_redirected_to_appointments(): void
+    {
+        $receptionist = User::create([
             'name' => 'Lucía Recepción',
             'email' => 'lucia@dental.test',
             'password' => bcrypt('password123'),
             'role' => UserRole::Recepcionista,
         ]);
 
-        // Login vía web POST
-        $loginResponse = $this->post('/login', [
-            'email' => 'lucia@dental.test',
-            'password' => 'password123',
-        ]);
-        $loginResponse->assertRedirect('/dashboard');
-
-        // Acceso al Dashboard manteniendo la sesión web
-        $dashboardResponse = $this->get('/dashboard');
-        $dashboardResponse->assertStatus(200);
-        $dashboardResponse->assertSee('¡Bienvenido(a), Lucía Recepción!');
+        $response = $this->actingAs($receptionist)->get('/dashboard');
+        $response->assertRedirect('/dashboard/appointments');
+        $response->assertSessionHas('error');
     }
 
-    public function test_dashboard_renders_dental_kpi_and_quick_access_view(): void
+    public function test_dentist_accessing_dashboard_is_redirected_to_medical_records(): void
     {
-        $user = User::create([
-            'name' => 'Dr. Cristhian',
-            'email' => 'dr.cristhian@dental.test',
+        $dentist = User::create([
+            'name' => 'Dr. Carlos Dentista',
+            'email' => 'carlos@dental.test',
             'password' => bcrypt('password123'),
             'role' => UserRole::Dentista,
         ]);
 
-        $response = $this->actingAs($user)->get('/dashboard');
-
-        $response->assertStatus(200);
-        $response->assertSee('¡Bienvenido(a), Dr. Cristhian!');
-        $response->assertSee('Total Pacientes');
-        $response->assertSee('Citas para Hoy');
-        $response->assertSee('Dentistas Activos');
-        $response->assertSee('Ingresos del Día');
-        $response->assertSee('/dashboard/patients');
-        $response->assertSee('/dashboard/appointments');
-        $response->assertSee('/dashboard/cash');
+        $response = $this->actingAs($dentist)->get('/dashboard');
+        $response->assertRedirect('/dashboard/medical-records');
+        $response->assertSessionHas('error');
     }
 }

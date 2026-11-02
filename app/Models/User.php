@@ -54,15 +54,38 @@ class User extends Authenticatable
     }
 
     /**
-     * Comprueba si el usuario tiene un rol específico.
+     * Comprueba si el usuario tiene uno o más roles específicos.
+     * Soporta enums UserRole o cadenas ('admin', 'dentist', 'receptionist', 'recepcionista', etc.)
      */
-    public function hasRole(UserRole|string $role): bool
+    public function hasRole(UserRole|string ...$roles): bool
     {
-        if (is_string($role)) {
-            $role = UserRole::tryFrom($role);
+        $currentRole = $this->role instanceof UserRole ? $this->role->value : (string) $this->role;
+
+        foreach ($roles as $role) {
+            if ($role instanceof UserRole && $role === $this->role) {
+                return true;
+            }
+
+            if (is_string($role)) {
+                $check = strtolower(trim($role));
+                if ($check === $currentRole) {
+                    return true;
+                }
+
+                $matches = match ($check) {
+                    'admin', 'administrador' => $currentRole === 'admin',
+                    'dentist', 'dentista' => $currentRole === 'dentista',
+                    'receptionist', 'recepcionista' => $currentRole === 'recepcionista',
+                    default => false,
+                };
+
+                if ($matches) {
+                    return true;
+                }
+            }
         }
 
-        return $this->role === $role;
+        return false;
     }
 
     /**
@@ -70,7 +93,7 @@ class User extends Authenticatable
      */
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::Admin;
+        return $this->hasRole('admin');
     }
 
     /**
@@ -78,7 +101,7 @@ class User extends Authenticatable
      */
     public function isReceptionist(): bool
     {
-        return $this->role === UserRole::Recepcionista;
+        return $this->hasRole('receptionist');
     }
 
     /**
@@ -86,6 +109,6 @@ class User extends Authenticatable
      */
     public function isDentist(): bool
     {
-        return $this->role === UserRole::Dentista;
+        return $this->hasRole('dentist');
     }
 }

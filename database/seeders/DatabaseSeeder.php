@@ -61,6 +61,7 @@ class DatabaseSeeder extends Seeder
                 'commission_percentage' => 15.00,
             ]
         );
+        $dentist->ensureDefaultSchedules();
 
         // 3. Catálogo de Tratamientos Odontológicos en Soles (PEN)
         $treatmentList = [

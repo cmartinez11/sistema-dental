@@ -8,6 +8,7 @@ use App\Http\Requests\StoreAppointmentRequest;
 use App\Http\Requests\UpdateAppointmentRequest;
 use App\Models\Appointment;
 use App\Models\Dentist;
+use App\Models\DentistSchedule;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -104,7 +105,29 @@ class AppointmentController extends Controller
             $patientId
         ): Appointment {
             // Bloqueo pesimista del registro del odontólogo para serializar agendamientos concurrentes
-            Dentist::where('id', $dentistId)->lockForUpdate()->firstOrFail();
+            $dentist = Dentist::where('id', $dentistId)->lockForUpdate()->firstOrFail();
+            $dentist->ensureDefaultSchedules();
+
+            // 0. Verificación de Horario y Disponibilidad Laboral del Odontólogo
+            $dayOfWeek = $startTime->dayOfWeekIso; // 1 = Lunes, ..., 7 = Domingo
+            $schedule = $dentist->schedules()->where('day_of_week', $dayOfWeek)->first();
+
+            if (! $schedule || ! $schedule->is_active) {
+                $dayName = DentistSchedule::getDayName($dayOfWeek);
+                throw ValidationException::withMessages([
+                    'start_time' => "El odontólogo no atiende citas los días {$dayName}.",
+                ]);
+            }
+
+            if (! $schedule->isWithinShift($startTime, $endTime)) {
+                $shiftStart = substr($schedule->start_time, 0, 5);
+                $shiftEnd = substr($schedule->end_time, 0, 5);
+                $appStart = $startTime->format('H:i');
+                $appEnd = $endTime->format('H:i');
+                throw ValidationException::withMessages([
+                    'start_time' => "El horario seleccionado ({$appStart} - {$appEnd}) está fuera del turno laboral del odontólogo ({$shiftStart} - {$shiftEnd}).",
+                ]);
+            }
 
             // 1. Verificación de colisión de horario del Odontólogo
             $dentistHasConflict = Appointment::forDentistConflict(
@@ -317,13 +340,47 @@ class AppointmentController extends Controller
         $startTime = Carbon::parse($request->input('start_time'));
         $endTime = Carbon::parse($request->input('end_time'));
 
+        $dentist = Dentist::find($dentistId);
+        $withinShift = false;
+        $dayWorking = false;
+        $shiftStartStr = '';
+        $shiftEndStr = '';
+        $scheduleMessage = '';
+
+        if ($dentist) {
+            $dentist->ensureDefaultSchedules();
+            $dayOfWeek = $startTime->dayOfWeekIso;
+            $schedule = $dentist->schedules()->where('day_of_week', $dayOfWeek)->first();
+
+            if ($schedule && $schedule->is_active) {
+                $dayWorking = true;
+                $shiftStartStr = substr($schedule->start_time, 0, 5);
+                $shiftEndStr = substr($schedule->end_time, 0, 5);
+                $withinShift = $schedule->isWithinShift($startTime, $endTime);
+
+                if (! $withinShift) {
+                    $scheduleMessage = "El horario está fuera del turno laboral del especialista ({$shiftStartStr} - {$shiftEndStr}).";
+                }
+            } else {
+                $dayName = DentistSchedule::getDayName($dayOfWeek);
+                $scheduleMessage = "El especialista no atiende los días {$dayName}.";
+            }
+        }
+
         $dentistConflict = Appointment::forDentistConflict($dentistId, $startTime, $endTime)->exists();
         $chairConflict = Appointment::forChairConflict($chairNumber, $startTime, $endTime)->exists();
 
+        $isAvailable = $dayWorking && $withinShift && ! $dentistConflict && ! $chairConflict;
+
         return response()->json([
-            'is_available' => ! $dentistConflict && ! $chairConflict,
+            'is_available' => $isAvailable,
+            'day_working' => $dayWorking,
+            'within_shift' => $withinShift,
             'dentist_available' => ! $dentistConflict,
             'chair_available' => ! $chairConflict,
+            'shift_start' => $shiftStartStr,
+            'shift_end' => $shiftEndStr,
+            'schedule_message' => $scheduleMessage,
             'dentist_id' => $dentistId,
             'dental_chair' => $chairNumber,
             'start_time' => $startTime->toIso8601String(),

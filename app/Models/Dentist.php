@@ -61,5 +61,32 @@ class Dentist extends Model
     {
         return $this->hasMany(PaymentPlan::class);
     }
+
+    /**
+     * Horarios y turnos de disponibilidad laboral del dentista.
+     */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(DentistSchedule::class);
+    }
+
+    /**
+     * Asegura y genera los turnos base para la semana si el odontólogo no los tiene inicializados.
+     */
+    public function ensureDefaultSchedules(): void
+    {
+        if ($this->schedules()->exists()) {
+            return;
+        }
+
+        for ($day = 1; $day <= 7; $day++) {
+            $this->schedules()->create([
+                'day_of_week' => $day,
+                'start_time' => '08:00:00',
+                'end_time' => $day === 6 ? '15:00:00' : ($day === 7 ? '13:00:00' : '20:00:00'),
+                'is_active' => $day !== 7, // Domingo inactivo por defecto
+            ]);
+        }
+    }
 }
 

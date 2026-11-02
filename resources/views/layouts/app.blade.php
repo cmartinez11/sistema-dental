@@ -120,36 +120,49 @@
                 <button @click="sidebarOpen = false" class="md:hidden text-gray-400 hover:text-white">✕</button>
             </div>
 
-            <!-- Menú de Navegación por Roles -->
+            <!-- Menú de Navegación por Roles (RBAC) -->
             <nav class="flex-grow px-4 py-5 space-y-1.5 text-sm overflow-y-auto">
                 <p class="px-3 text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Menú Principal</p>
 
-                <!-- Panel General / Dashboard -->
-                <a href="{{ route('dashboard') }}"
-                    class="flex items-center px-3.5 py-2.5 rounded-xl transition text-gray-300 hover:bg-gray-800 hover:text-white group font-medium {{ request()->is('dashboard') ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : '' }}">
-                    <span class="mr-3 text-base">📊</span> Panel General
-                </a>
+                <!-- Panel General / Dashboard: Solo Administrador -->
+                @if(!auth()->check() || auth()->user()->hasRole('admin'))
+                    <a href="{{ route('dashboard') }}"
+                        class="flex items-center px-3.5 py-2.5 rounded-xl transition text-gray-300 hover:bg-gray-800 hover:text-white group font-medium {{ request()->is('dashboard') ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : '' }}">
+                        <span class="mr-3 text-base">📊</span> Panel General
+                    </a>
 
-                <!-- Directorio Pacientes -->
-                <a href="{{ route('patients.index') }}"
-                    class="flex items-center px-3.5 py-2.5 rounded-xl transition text-gray-300 hover:bg-gray-800 hover:text-white group font-medium {{ request()->is('dashboard/patients*') ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : '' }}">
-                    <span class="mr-3 text-base">👥</span> Directorio Pacientes
-                </a>
+                    <a href="{{ route('dentist-schedules.index') }}"
+                        class="flex items-center px-3.5 py-2.5 rounded-xl transition text-gray-300 hover:bg-gray-800 hover:text-white group font-medium {{ request()->is('dashboard/dentist-schedules*') ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : '' }}">
+                        <span class="mr-3 text-base">⏱️</span> Horarios Odontólogos
+                    </a>
+                @endif
 
-                <!-- Opciones para Recepción y Admin -->
-                @if(!auth()->check() || auth()->user()->hasRole('recepcionista') || auth()->user()->hasRole('admin') || auth()->user()->role === 'receptionist' || auth()->user()->role === 'Recepcionista' || auth()->user()->role === 'admin')
+                <!-- Directorio Pacientes: Admin, Recepcionista y Dentista -->
+                @if(!auth()->check() || auth()->user()->hasRole('admin', 'receptionist', 'dentist'))
+                    <a href="{{ route('patients.index') }}"
+                        class="flex items-center px-3.5 py-2.5 rounded-xl transition text-gray-300 hover:bg-gray-800 hover:text-white group font-medium {{ request()->is('dashboard/patients*') ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : '' }}">
+                        <span class="mr-3 text-base">👥</span> Directorio Pacientes
+                    </a>
+                @endif
+
+                <!-- Gestión de Citas: Admin, Recepcionista y Dentista -->
+                @if(!auth()->check() || auth()->user()->hasRole('admin', 'receptionist', 'dentist'))
                     <a href="{{ route('appointments.index') }}"
                         class="flex items-center px-3.5 py-2.5 rounded-xl transition text-gray-300 hover:bg-gray-800 hover:text-white group font-medium {{ request()->is('dashboard/appointments*') ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : '' }}">
                         <span class="mr-3 text-base">📅</span> Gestión de Citas
                     </a>
+                @endif
+
+                <!-- Caja y Pagos: Solo Admin y Recepcionista (Dentista bloqueado) -->
+                @if(!auth()->check() || auth()->user()->hasRole('admin', 'receptionist'))
                     <a href="{{ route('cash.index') }}"
                         class="flex items-center px-3.5 py-2.5 rounded-xl transition text-gray-300 hover:bg-gray-800 hover:text-white group font-medium {{ request()->is('dashboard/cash*') ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : '' }}">
                         <span class="mr-3 text-base">💰</span> Caja y Pagos
                     </a>
                 @endif
 
-                <!-- Opciones para Dentistas y Admin -->
-                @if(!auth()->check() || auth()->user()->hasRole('dentista') || auth()->user()->hasRole('admin') || auth()->user()->role === 'dentist' || auth()->user()->role === 'Dentista' || auth()->user()->role === 'admin')
+                <!-- Historias Clínicas: Solo Admin y Dentista (Recepcionista bloqueada) -->
+                @if(!auth()->check() || auth()->user()->hasRole('admin', 'dentist'))
                     <a href="{{ route('medical-records.index') }}"
                         class="flex items-center px-3.5 py-2.5 rounded-xl transition text-gray-300 hover:bg-gray-800 hover:text-white group font-medium {{ request()->is('dashboard/medical-records*') ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/30' : '' }}">
                         <span class="mr-3 text-base">📋</span> Historias Clínicas
@@ -206,6 +219,27 @@
 
             <!-- Área Dinámica de Contenido -->
             <main class="p-4 sm:p-6 lg:p-8 flex-grow overflow-x-hidden">
+                <!-- Alertas Flash de Autorización / RBAC -->
+                @if(session('error'))
+                    <div class="mb-5 p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl flex items-center justify-between text-xs font-semibold shadow-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">⛔</span>
+                            <span>{{ session('error') }}</span>
+                        </div>
+                        <button onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-700">✕</button>
+                    </div>
+                @endif
+
+                @if(session('success'))
+                    <div class="mb-5 p-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl flex items-center justify-between text-xs font-semibold shadow-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="text-base">✅</span>
+                            <span>{{ session('success') }}</span>
+                        </div>
+                        <button onclick="this.parentElement.remove()" class="text-emerald-400 hover:text-emerald-700">✕</button>
+                    </div>
+                @endif
+
                 @yield('content')
             </main>
         </div>
